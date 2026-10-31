@@ -8,8 +8,6 @@ A web app that finds products listed on Salla that no longer have a sticker in t
 2. Upload the **ERP sticker** CSV as File 2. Its column names are on row 1, including `sticker_number`.
 3. Click **Process Files**, check the preview, then download `salla_out_of_stock_YYYY-MM-DD.csv`.
 
-The language switch at the top changes between Arabic and English.
-
 ## How products are matched
 
 1. The number after the last `-` in `sku_number` is taken as the sticker number (`Brh1746640-109250` gives `109250`).
@@ -55,4 +53,3 @@ streamlit run app.py
 | `app.py` | Streamlit interface |
 | `main.py` | Data-cleaning and matching logic, plus the command-line version |
 | `validation.py` | Checks that uploads are the expected files |
-| `i18n.py` | Arabic and English interface text |
