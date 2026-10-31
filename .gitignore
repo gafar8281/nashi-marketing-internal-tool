@@ -1,0 +1,7 @@
+# Real stock data must never be committed
+data/
+*.csv
+
+.venv/
+__pycache__/
+.streamlit/secrets.toml
