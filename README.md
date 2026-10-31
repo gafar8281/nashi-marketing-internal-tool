@@ -37,11 +37,25 @@ streamlit run app.py
 2. Sign in at [share.streamlit.io](https://share.streamlit.io) with GitHub and choose **Create app**.
 3. Select the repository and branch, and set the main file path to `app.py`.
 4. Under **Advanced settings**, choose Python **3.12**.
-5. Click **Deploy** and share the URL with your team.
+5. Click **Deploy**.
+
+### Keeping the interface clean
+
+Community Cloud adds its own elements to the page. To reduce them:
+
+1. Keep the GitHub repository **private**, which removes the GitHub links. Grant Streamlit access to private repositories if prompted. Community Cloud allows only one app from a private repository per account.
+2. In the app's settings, keep sharing set to **public**, otherwise staff will be asked to sign in.
+3. Share this link with staff, which hides the toolbar:
+
+   ```text
+   https://<your-app>.streamlit.app/?embed=true
+   ```
+
+The creator profile and "Hosted with Streamlit" badge belong to the platform and may still appear. Check the result in a private browser window, because the owner's signed-in view shows extra controls.
 
 ## Privacy
 
-- The app has no login: anyone with the link can use it.
+- The app has no login: anyone with the link can use it, even when the repository is private.
 - Uploaded files are held in memory for that browser session and are never written to disk by the app.
 - While being processed, files pass through the hosting provider's servers.
 - Never commit real data files to the repository.
