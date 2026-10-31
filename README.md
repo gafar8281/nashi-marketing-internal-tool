@@ -16,7 +16,7 @@ A web app that finds products listed on Salla that no longer have a sticker in t
 
 The output is the original Salla rows plus a `cleaned_sku_number` column.
 
-**Skipped products:** SKUs in other formats can't be checked, such as `Brd3014240/053713` (slash) and `021169-Brd303118` (number at the front). They aren't in the output. The app reports how many were skipped and lists them.
+**Skipped products:** SKUs in other formats can't be checked, such as `Brd3014240/053713` (slash) and `021169-Brd303118` (number at the front). They aren't in the output, and the app doesn't list them. The **Salla products** and **Checked** totals differ by the number of skipped rows.
 
 ## Run locally
 

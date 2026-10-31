@@ -24,7 +24,6 @@ class Result:
     checked_count: int
     matched_any: bool
     out_of_stock: pd.DataFrame
-    skipped: pd.DataFrame
     csv_bytes: bytes
 
 
@@ -53,8 +52,6 @@ def process(salla_file, erp_file):
         checked_count=len(salla_cleaned),
         matched_any=len(out_of_stock) < len(salla_cleaned),
         out_of_stock=out_of_stock,
-        # The cleaner keeps the original row index, so anything missing from it was skipped.
-        skipped=salla_raw.loc[salla_raw.index.difference(salla_cleaned.index)],
         # The BOM makes Excel display the Arabic product data correctly.
         csv_bytes=out_of_stock.to_csv(index=False).encode('utf-8-sig'),
     )
@@ -67,11 +64,10 @@ def show_file_problem(file, message):
 def show_result(result):
     st.success(f'Done. Found {len(result.out_of_stock):,} out-of-stock products.')
 
-    columns = st.columns(4)
+    columns = st.columns(3)
     columns[0].metric('Salla products', f'{result.total_count:,}')
     columns[1].metric('Checked', f'{result.checked_count:,}')
     columns[2].metric('Out of stock', f'{len(result.out_of_stock):,}')
-    columns[3].metric('Skipped', f'{len(result.skipped):,}')
 
     if not result.matched_any:
         st.warning(
@@ -89,14 +85,6 @@ def show_result(result):
 
     st.subheader('Preview')
     st.dataframe(result.out_of_stock, hide_index=True)
-
-    if len(result.skipped):
-        st.warning(
-            f'{len(result.skipped):,} products could not be checked because no number could '
-            'be read from the end of their SKU. They are not in the downloaded file.'
-        )
-        with st.expander('Show skipped products'):
-            st.dataframe(result.skipped, hide_index=True)
 
 
 st.set_page_config(page_title=TITLE, page_icon='📦')
