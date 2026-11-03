@@ -1,20 +1,22 @@
-"""Streamlit interface for the Salla out-of-stock check. Run: streamlit run app.py
+"""Streamlit interface for updating stock in the Salla file. Run: streamlit run app.py
 
 Uploads stay in this session's memory and are never written to disk. Don't add
 st.cache_data around them: that cache is shared by all sessions.
 """
 from dataclasses import dataclass
-from datetime import date
 
 import pandas as pd
 import streamlit as st
 
-from main import find_out_of_stock_items, get_cleaned_erp_data, get_cleaned_salla_data
+from main import (
+    get_cleaned_erp_data,
+    read_salla_file,
+    salla_csv_bytes,
+    update_available_quantity,
+)
 from validation import InputFileError, validate_erp_file, validate_salla_file
 
-SALLA_HEADER_ROW = 1
-
-TITLE = 'Salla Out-of-Stock Checker'
+TITLE = 'Salla Stock Updater'
 PROCESS_LABEL = 'Process Files'
 
 
@@ -22,13 +24,15 @@ PROCESS_LABEL = 'Process Files'
 class Result:
     total_count: int
     checked_count: int
-    matched_any: bool
-    out_of_stock: pd.DataFrame
+    in_stock_count: int
+    out_of_stock_count: int
+    updated: pd.DataFrame
     csv_bytes: bytes
+    file_name: str
 
 
 def process(salla_file, erp_file):
-    """Runs the existing script logic on the uploads. Returns None if a file was rejected."""
+    """Runs the shared stock logic on the uploads. Returns None if a file was rejected."""
     for file, validate in ((salla_file, validate_salla_file), (erp_file, validate_erp_file)):
         try:
             validate(file)
@@ -36,24 +40,23 @@ def process(salla_file, erp_file):
             show_file_problem(file, str(error))
             return None
 
-    salla_raw = pd.read_csv(salla_file, header=SALLA_HEADER_ROW)
-    salla_file.seek(0)
-    salla_cleaned = get_cleaned_salla_data(salla_file)
+    salla_df = read_salla_file(salla_file)
     _, erp_sticker_numbers = get_cleaned_erp_data(erp_file)
 
-    # Without stickers every product would be reported out of stock, which looks like a real result.
+    # Without stickers every product would be set out of stock, which looks like a real result.
     if not erp_sticker_numbers:
         show_file_problem(erp_file, 'no valid sticker numbers were found in this file.')
         return None
 
-    out_of_stock = find_out_of_stock_items(salla_cleaned, erp_sticker_numbers)
+    updated, in_stock_count, out_of_stock_count = update_available_quantity(salla_df, erp_sticker_numbers)
     return Result(
-        total_count=len(salla_raw),
-        checked_count=len(salla_cleaned),
-        matched_any=len(out_of_stock) < len(salla_cleaned),
-        out_of_stock=out_of_stock,
-        # The BOM makes Excel display the Arabic product data correctly.
-        csv_bytes=out_of_stock.to_csv(index=False).encode('utf-8-sig'),
+        total_count=len(salla_df),
+        checked_count=in_stock_count + out_of_stock_count,
+        in_stock_count=in_stock_count,
+        out_of_stock_count=out_of_stock_count,
+        updated=updated,
+        csv_bytes=salla_csv_bytes(updated),
+        file_name=salla_file.name,
     )
 
 
@@ -62,41 +65,45 @@ def show_file_problem(file, message):
 
 
 def show_result(result):
-    st.success(f'Done. Found {len(result.out_of_stock):,} out-of-stock products.')
+    st.success(f'Done. Updated available_quantity for {result.checked_count:,} products.')
 
-    columns = st.columns(3)
+    columns = st.columns(4)
     columns[0].metric('Salla products', f'{result.total_count:,}')
-    columns[1].metric('Checked', f'{result.checked_count:,}')
-    columns[2].metric('Out of stock', f'{len(result.out_of_stock):,}')
+    columns[1].metric('In stock', f'{result.in_stock_count:,}')
+    columns[2].metric('Out of stock', f'{result.out_of_stock_count:,}')
+    columns[3].metric('Not checked', f'{result.total_count - result.checked_count:,}')
 
-    if not result.matched_any:
+    if result.checked_count and not result.in_stock_count:
         st.warning(
             'None of the Salla products were found in the ERP file, so every checked '
-            'product is listed as out of stock. Please check that these are the right files.'
+            'product is set to 0. Please check that these are the right files.'
         )
 
     st.download_button(
-        'Download result (CSV)',
+        'Download updated Salla file (CSV)',
         data=result.csv_bytes,
-        file_name=f'salla_out_of_stock_{date.today():%Y-%m-%d}.csv',
+        file_name=result.file_name,
         mime='text/csv',
         type='primary',
     )
 
     st.subheader('Preview')
-    st.dataframe(result.out_of_stock, hide_index=True)
+    st.dataframe(result.updated, hide_index=True)
 
 
 st.set_page_config(page_title=TITLE, page_icon='📦')
 
 st.title(TITLE)
-st.write('Find the products listed on Salla that no longer have a sticker in the ERP.')
+st.write('Update available_quantity in the Salla file: 1 if the product has a sticker in the ERP, 0 if not.')
 st.markdown(
     '1. Upload the **Salla Product Quantities** CSV in the first box.\n'
     '2. Upload the **ERP sticker** CSV in the second box.\n'
-    f'3. Click **{PROCESS_LABEL}**, check the preview, then download the result.'
+    f'3. Click **{PROCESS_LABEL}**, check the preview, then download the updated Salla file.'
 )
-st.caption('Your files are used only to produce this result and are not saved.')
+st.caption(
+    'Products marked Not checked keep their existing value. '
+    'Your files are used only to produce this result and are not saved.'
+)
 
 upload_columns = st.columns(2)
 salla_file = upload_columns[0].file_uploader(

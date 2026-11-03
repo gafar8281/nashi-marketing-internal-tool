@@ -1,22 +1,22 @@
-# Salla Out-of-Stock Checker
+# Salla Stock Updater
 
-A web app that finds products listed on Salla that no longer have a sticker in the ERP. Upload the two CSV exports, preview the result and download it. No Python knowledge is needed to use it.
+A web app that updates `available_quantity` in the Salla file using the stickers in the ERP. Upload the two CSV exports, preview the result and download the updated Salla file. No Python knowledge is needed to use it.
 
 ## Using the app
 
-1. Upload the **Salla Product Quantities** CSV as File 1. Its column names are on row 2, including `sku_number`.
+1. Upload the **Salla Product Quantities** CSV as File 1. Its column names must be on row 1, including `sku_number` and `available_quantity`.
 2. Upload the **ERP sticker** CSV as File 2. Its column names are on row 1, including `sticker_number`.
-3. Click **Process Files**, check the preview, then download `salla_out_of_stock_YYYY-MM-DD.csv`.
+3. Click **Process Files**, check the preview, then download the updated file, which keeps the name of the uploaded Salla file.
 
 ## How products are matched
 
 1. The number after the last `-` in `sku_number` is taken as the sticker number (`Brh1746640-109250` gives `109250`).
-2. Rows without a usable number are skipped. ERP rows without a numeric `sticker_number` are ignored.
-3. A Salla product is out of stock if its number isn't in the ERP file.
+2. ERP rows without a numeric `sticker_number` are ignored.
+3. `available_quantity` is set to `1` if the number is in the ERP file, and `0` if it isn't.
 
-The output is the original Salla rows plus a `cleaned_sku_number` column.
+The output is the original Salla file with only `available_quantity` updated. All other columns and every row are kept as they were.
 
-**Skipped products:** SKUs in other formats can't be checked, such as `Brd3014240/053713` (slash) and `021169-Brd303118` (number at the front). They aren't in the output, and the app doesn't list them. The **Salla products** and **Checked** totals differ by the number of skipped rows.
+**Not checked products:** SKUs in other formats can't be checked, such as `Brd3014240/053713` (slash) and `021169-Brd303118` (number at the front). They stay in the output with their existing `available_quantity`, and the app shows how many there are under **Not checked**.
 
 ## Run locally
 
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-`python main.py` still runs the original command-line version on the files in `data/`.
+`python main.py` runs the command-line version on the files in `data/`. It overwrites the Salla file there, so keep a copy if you need the original values.
 
 ## Deploy to Streamlit Community Cloud
 
